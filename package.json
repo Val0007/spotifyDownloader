@@ -1,0 +1,24 @@
+{
+  "name": "spotifydownloader",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "type": "module",
+  "dependencies": {
+    "@ffmpeg-installer/ffmpeg": "^1.1.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ffmpeg-static": "^5.1.0",
+    "file-saver": "^2.0.5",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-fetch": "^3.3.1",
+    "webm-to-mp4": "^1.0.0",
+    "ytdl-core": "^4.11.5"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
