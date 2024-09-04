@@ -3,17 +3,21 @@ import Login from './Login';
 import PlaylistInput from './PlaylistInput'
 import Songs from './Songs';
 import Callback from './Callback'
-function App() {
+import { AuthProvider } from './AuthHook';
+import Home from './RedirectToPlaylist';
 
+function App() {
   return (
-    <div className="">
         <Routes>
-            <Route path="/" element={<Login/>} />
-            <Route path="/input" element={<PlaylistInput />} />
-            <Route path="/songs" element={<Songs />} />
+            <Route path="/" element={<Home/>} />
+            <Route element={<AuthProvider/>}>
+              <Route path="/playlists" element={<PlaylistInput />} />
+            </Route>
+            <Route element={<AuthProvider/>}>
+              <Route path="/songs" element={<Songs />} />
+            </Route>
             <Route path="/callback" element={<Callback/>}></Route>
          </Routes>
-    </div>
   )
 }
 

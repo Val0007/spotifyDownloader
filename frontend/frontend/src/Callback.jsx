@@ -12,8 +12,8 @@ export default function Callback() {
     const navigate = useNavigate();
     const code = searchParams.get("code")
     console.log("CODE IS",code)
-    var client_id = 'c06ca7d6395a410884815f9c38596f4c';
-    var client_secret = '246e22c8b35943b3b020827dd81a10b1';
+    var client_id = import.meta.env.VITE_client_id
+    var client_secret = import.meta.env.VITE_client_secret
     
     async function getToken(){
         try{
@@ -21,7 +21,7 @@ export default function Callback() {
                 url: 'https://accounts.spotify.com/api/token',
                 form: {
                   code: code,
-                  redirect_uri: "http://localhost:5173/callback",
+                  redirect_uri: `${import.meta.env.VITE_base_url}/callback`,
                   grant_type: 'authorization_code'
                 },
                 headers: {
@@ -32,10 +32,12 @@ export default function Callback() {
               };
               const response = await fetch(authOptions.url, {method: 'POST', body: queryString.stringify(authOptions.form),headers:authOptions.headers});
               const data = await response.json();
+              console.log(data)
               console.log(data["access_token"]);
-              localStorage.setItem("token",data['access_token'])
-              console.log("item is ",localStorage.getItem("token"),"TOKEEN")
-              navigate("/songs")
+              localStorage.setItem("accesstoken",data['access_token'])
+              localStorage.setItem("refreshtoken",data['refresh_token'])
+              saveCurrentDate()
+              navigate("/playlists")
         }
         catch(e){
             console.log(e)
@@ -54,4 +56,15 @@ export default function Callback() {
             
         </div>
     )
+}
+
+function saveCurrentDate() {
+    // Get the current date and time
+    const now = new Date();
+
+    // Convert the Date object to a string
+    const dateStr = now.toISOString();
+
+    // Save the string to localStorage under the key 'storedDate'
+    localStorage.setItem('storedDate', dateStr);
 }
