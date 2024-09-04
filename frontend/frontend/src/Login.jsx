@@ -1,6 +1,11 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 
 export default function Login() {
+
+    useEffect(()=>{
+        console.log(import.meta.env)
+    },[])
+
     return (
         <div className="h-screen w-screen flex flex-col justify-center items-center bg-green-800 p-4">
 
