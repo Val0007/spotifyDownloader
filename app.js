@@ -1,92 +1,38 @@
-var client_id = 'c06ca7d6395a410884815f9c38596f4c';
-var redirect_uri = 'http://localhost:3000/callback';
-var client_secret = '246e22c8b35943b3b020827dd81a10b1';
-// var youtube_key = "AIzaSyDc0ns2SIiQHRNFnXkg4-0PlJwfDtsBAJQ"
-var youtube_key = "AIzaSyCdA62S5HP5pukh0RsA4SvNg2R9qlO9pWs"
-var obj = {  access_token: 'BQDAbLX5uAxd-nwYtkLV0ExDwl3XPfq9Kgu7nkF7HZqKHNpCnJa6Q5euUZVKKkbrsYvfCDwQVpspFz_8Y4lzBHpoPvW02qc6Y65YOEyboMb1Yv9CkxklWa5CzYis8SV5ghDbAuZi8jrcIJnAkzhEZZ4yWylLLhJOtxyJinF0R8MgBddqjO3SjX4PGxBE9HGZcB9Dj7bvnEVT2K9VaQTO9tRbYA4teA',
-token_type: 'Bearer',
-expires_in: 3600,
-refresh_token: 'AQD4vk753jlWAUz24YXA2P1ZyFIPiLWJ0kjkC2Jtf0O9xME_NiZIQUc2X1r6Roo7ZP8mJHGHsXmut4XD4VzVPaOsJXegF0Psb6hCpuPGi2lPRhMxkO7GroqKhez2WGQlWUE',
-scope: 'playlist-read-private user-read-private'
-}
+
 
 import fetch from 'node-fetch';
 import express from 'express'
-import querystring from 'querystring'
-import ytdl from 'ytdl-core'; 
-import fs from 'fs'
-import ffmpegStatic from 'ffmpeg-static';
+// import ytdl from 'ytdl-core'; 
+import ytdl from '@distube/ytdl-core'
 import ffmpeg from 'fluent-ffmpeg';
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg';
 import { spawn } from 'child_process';
 import cors from 'cors'
+import YTMusic from "ytmusic-api"
+import 'dotenv/config'
+
+
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 var app = express();
 app.use(cors())
+const ytmusic = new YTMusic()
+await ytmusic.initialize(/* Optional: Custom cookies */)
 
-function makeid(length) {
-    let result = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const charactersLength = characters.length;
-    let counter = 0;
-    while (counter < length) {
-      result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      counter += 1;
-    }
-    return result;
+async function getMusicVideo(title){
+const songs = await ytmusic.search(title)
+	let song = songs[0]
+  let id = song['videoId']
+  let artist = song['artist']['name']
+  let img = song['thumbnails'][0]['url']
+return {vidId:id,img,artist}
 }
+
+
 
 app.get("/",function(req,res){
     res.send("hi")
 })
-
-app.get('/login', function(req, res) {
-
-  var state = makeid(16);
-  var scope = 'user-read-private playlist-read-private';
-
-  res.redirect('https://accounts.spotify.com/authorize?' +
-    querystring.stringify({
-      response_type: 'code',
-      client_id: client_id,
-      scope: scope,
-      redirect_uri: redirect_uri,
-      state: state
-    }));
-});
-
-//https://my-domain.com/callback?code=NApCCg..BkWtQ&state=34fFs29kd09
-
-app.get('/callback', async function(req, res) {
-
-    var code = req.query.code || null;
-    var state = req.query.state || null;
-  
-    if (state === null) {
-      res.redirect('/#' +
-        querystring.stringify({
-          error: 'state_mismatch'
-        }));
-    } else {
-      var authOptions = {
-        url: 'https://accounts.spotify.com/api/token',
-        form: {
-          code: code,
-          redirect_uri: redirect_uri,
-          grant_type: 'authorization_code'
-        },
-        headers: {
-          'Authorization': 'Basic ' + (new Buffer.from(client_id + ':' + client_secret).toString('base64')),
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        json: true
-      };
-      const response = await fetch(authOptions.url, {method: 'POST', body: querystring.stringify(authOptions.form),headers:authOptions.headers});
-      const data = await response.json();
-      console.log(data);
-    }
-  });
 
 
   app.get('/playlists/:id/:token/:offset',async (req,res)=>{
@@ -101,7 +47,7 @@ app.get('/callback', async function(req, res) {
   app.get('/videos/:title',async (req,res)=>{
     const title = req.params.title
     console.log("title is",title)
-    const data  = await getVideoInfo(title)
+    const data  = await getMusicVideo(title)
     res.send(data)
   })
 
@@ -119,7 +65,8 @@ app.get('/callback', async function(req, res) {
 
 
  async function getPlaylistData(id,token,offset){
-      const url = `https://api.spotify.com/v1/playlists/${id}/tracks?fields=%28next%2Cprevious%2Citems%28track%28name%2Calbum%28images%29%2Cartists%28name%29%29%29%29&limit=5&offset=${offset}`
+  //fields=(next, previous, items(track(name, album(images), artists(name))))&
+      const url = `https://api.spotify.com/v1/playlists/${id}/tracks?limit=5&offset=${offset}`
       const header = `Bearer ${token}`
       try{
         const response = await fetch(url, {method: 'GET',headers:{
@@ -138,7 +85,8 @@ app.get('/callback', async function(req, res) {
       return {
           tracks,
           next:data.next,
-          prev:data.previous
+          prev:data.previous,
+          total:data.total
       }
       }
       catch(e){
@@ -148,51 +96,68 @@ app.get('/callback', async function(req, res) {
 
   }
 
-  async function getVideoInfo(videoTitle){
-    try{
-      const url = `https://youtube.googleapis.com/youtube/v3/search?part=snippet&q=${videoTitle}&key=${youtube_key}`
-      const response = await fetch(url);
-     const data = await response.json();
-     console.log(data)
-     const item = data.items[0]
-     const vidId = item.id.videoId
-     const title = item.snippet.title
-     const channel = item.snippet.channelTitle
-     console.log(item)
-     const img = item.snippet.thumbnails.high.url
-     const vidurl = `https://www.youtube.com/watch?v=${vidId}`
-     return {
-         vidId,title,channel,img,vidurl
-     }
-    }
-    catch(e){
-      console.log(e)
-    }
+  // async function getVideoInfo(videoTitle){
+  //   try{
+  //     const url = `https://youtube.googleapis.com/youtube/v3/search?part=snippet&q=${videoTitle}&key=${youtube_key}`
+  //     const response = await fetch(url);
+  //    const data = await response.json();
+  //    console.log(data)
+  //    const item = data.items[0]
+  //    const vidId = item.id.videoId
+  //    const title = item.snippet.title
+  //    const channel = item.snippet.channelTitle
+  //    console.log(item)
+  //    const img = item.snippet.thumbnails.high.url
+  //    const vidurl = `https://www.youtube.com/watch?v=${vidId}`
+  //    return {
+  //        vidId,title,channel,img,vidurl
+  //    }
+  //   }
+  //   catch(e){
+  //     console.log(e)
+  //   }
 
-  }
+  // }
 
 async function downloadVideo(id,link,res,name){
   try{
+    console.log(id)
     let info = await ytdl.getInfo(id);
-    //receive a readable stream from ytdl    
+    
+    //receive a readable stream from ytdl   
+     
+
     let stream = ytdl.downloadFromInfo(info,{filter:"audioonly",quality:"highestaudio"})
+    
+    
 
     const ffmpegCommand = spawn(ffmpegPath, [
-      '-i', 'pipe:0', // Input from stdin (pipe:0)
-      '-vn',         // Only process the audio stream
-      '-c:a', 'libmp3lame', // Set the MP3 audio codec
-      "-f", "mp3",
-      '-progress', 'pipe:1',
-       "-"              // Output on stdout
+      '-i', 'pipe:0',       // Input from stdin (pipe:0)
+      '-vn',                // Disable video processing
+      '-acodec', 'libmp3lame', // Use libmp3lame codec for audio
+      '-ar', '44100',       // Set audio sampling rate to 44100 Hz
+      '-ac', '2',           // Set number of audio channels to 2 (stereo)
+      '-b:a', '128k',       // Set audio bitrate to 128k
+      '-f', 'mp3',          // Force output format to MP3
+      'pipe:1'              // Output to stdout (pipe:1)
     ]);
+
+
+      stream.pipe(ffmpegCommand.stdin)
+  
       
-      stream.pipe(ffmpegCommand.stdin);
+
 
       res.set('Content-disposition', 'attachment; filename=' + encodeURI(`${name}.mp3`));
-      //res.set('Content-disposition', 'attachment; filename=' + encodeURI(`songg.mp3`));
       res.set('Content-Type', 'audio/mp3');
+      ffmpegCommand.stdout.pipe(res)
 
-      
+      let outputBytes = 0
+      ffmpegCommand.stdout.on('data', (chunk) => {
+        outputBytes += chunk.length;
+        console.log(`Wrote ${outputBytes} bytes to output`);
+      });
+
       ffmpegCommand.stderr.on('data', (data) => {
         console.error('Error:', data.toString());
       });
@@ -200,13 +165,11 @@ async function downloadVideo(id,link,res,name){
       ffmpegCommand.on('close', (code) => {
         if (code === 0) {
           console.log('Conversion complete.');
-          //ffmpegCommand.stdout.pipe(res) //there will be no pipe Error: Output #0, mp3, to 'pipe:':
+           //there will be no pipe Error: Output #0, mp3, to 'pipe:':
         } else {
           console.error('ffmpeg process exited with code:', code);
         }
       });
-
-      ffmpegCommand.stdout.pipe(res)
   }
   catch(e){
     console.log(e)
