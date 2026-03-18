@@ -15,6 +15,7 @@ import 'dotenv/config'
 
 ffmpeg.setFfmpegPath(ffmpegPath);
 var app = express();
+app.options('*', cors()); // handle preflight for all routes
 app.use(cors())
 const ytmusic = new YTMusic()
 await ytmusic.initialize(/* Optional: Custom cookies */)
